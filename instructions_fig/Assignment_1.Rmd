@@ -1,0 +1,113 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: html_document
+keep_md: TRUE
+---
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading and preprocessing the data
+
+1. Download, unzip and load data into data frame `data`.
+2. Process/transform the data (if necessary) into a format suitable for your analysis
+
+```{r, echo = TRUE}
+
+if(!file.exists("RepData_PeerAssessment1/activity.zip")) {
+        temp <- tempfile()
+        download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",temp)
+        unzip(temp)
+        unlink(temp)
+} 
+
+data <- read.csv("activity.csv")
+```
+
+## What is mean total number of steps taken per day?
+
+For this part of the assignment, you can ignore the missing values in the dataset.
+
+1. Calculate the total number of steps taken per day
+Sum steps by day, create Histogram, and calculate mean and median.
+
+```{r, echo = TRUE}
+
+steps_by_day <- aggregate(steps ~ date, data, sum)
+hist(steps_by_day$steps, main = paste("Total Steps Each Day"), col="blue", xlab="Number of Steps")
+rmean <- mean(steps_by_day$steps)
+rmedian <- median(steps_by_day$steps)
+```
+
+## What is the average daily activity pattern?
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r, echo=TRUE}
+steps_by_interval <- aggregate(steps ~ interval, data, mean)
+plot(steps_by_interval$interval,steps_by_interval$steps, type="l", xlab="Interval", ylab="Number of Steps",main="Average Number of Steps per Day by Interval")
+max_interval <- steps_by_interval[which.max(steps_by_interval$steps),1]
+```
+The 5-minute interval, on average across all the days in the data set, containing the maximum number of steps is r max_interval.
+
+## Imputing missing values
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r, echo=TRUE}
+incomplete <- sum(!complete.cases(data))
+imputed_data <- transform(data, steps = ifelse(is.na(data$steps), steps_by_interval$steps[match(data$interval, steps_by_interval$interval)], data$steps))
+imputed_data[as.character(imputed_data$date) == "2012-10-01", 1] <- 0
+```
+
+2. Recount total steps by day and create Histogram.
+
+```{r, echo=TRUE}
+steps_by_day_i <- aggregate(steps ~ date, imputed_data, sum)
+hist(steps_by_day_i$steps, main = paste("Total Steps Each Day"), col="orange", xlab="Number of Steps")
+```
+3. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day.
+
+```{r, echo=TRUE}
+
+steps_by_day_i <- aggregate(steps ~ date, imputed_data, sum)
+hist(steps_by_day_i$steps, main = paste("Total Steps Each Day"), col="blue", xlab="Number of Steps")
+```
+3. Create Histogram to show difference.
+```{r, echo=TRUE}
+steps_by_day_i <- aggregate(steps ~ date, imputed_data, sum)
+hist(steps_by_day_i$steps, main = paste("Total Steps Each Day"), col="green", xlab="Number of Steps")
+hist(steps_by_day$steps, main = paste("Total Steps Each Day"), col="orange", xlab="Number of Steps", add=T)
+legend("topright", c("Imputed", "Non-imputed"), col=c("green", "orange"), lwd=10)
+
+```
+4.A. Calculate and report the mean and median total number of steps taken per day. 
+
+```{r, echo=TRUE}
+rmean.i <- mean(steps_by_day_i$steps)
+rmedian.i <- median(steps_by_day_i$steps)
+```
+
+4.B.Calculate total difference.
+
+```{r, echo=TRUE}
+total_diff <- sum(steps_by_day_i$steps) - sum(steps_by_day$steps)
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo=TRUE}
+weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", 
+              "Friday")
+imputed_data$dow = as.factor(ifelse(is.element(weekdays(as.Date(imputed_data$date)),weekdays), "Weekday", "Weekend"))
+
+steps_by_interval_i <- aggregate(steps ~ interval + dow, imputed_data, mean)
+
+
+library(lattice)
+
+xyplot(steps_by_interval_i$steps ~ steps_by_interval_i$interval|steps_by_interval_i$dow, main="Average Steps per Day by Interval",xlab="Interval", ylab="Steps",layout=c(1,2), type="l")
+
+```
+## FIN
